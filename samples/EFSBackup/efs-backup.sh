@@ -23,62 +23,67 @@ efsid=$5
 # Prepare system for rsync
 #echo 'sudo yum -y update'
 #sudo yum -y update
-echo 'sudo yum -y install nfs-utils'
-sudo yum -y install nfs-utils
-echo 'sudo mkdir /backup'
-sudo mkdir /backup
-echo 'sudo mkdir /mnt/backups'
-sudo mkdir /mnt/backups
-echo "sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $source /backup"
-sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $source /backup
-echo "sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $destination /mnt/backups"
-sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $destination /mnt/backups
+#echo 'sudo yum -y install nfs-utils'
+#sudo yum -y install nfs-utils
+
+#we need here to separete directories for running things in parallel
+BACKUP_SRC="/backup-$source"
+BACKUP_DST="/mnt/backups-$destination"
+
+echo "sudo mkdir ${BACKUP_SRC}"
+sudo mkdir ${BACKUP_SRC}
+echo "sudo mkdir ${BACKUP_DST}"
+sudo mkdir ${BACKUP_DST}
+echo "sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $source ${BACKUP_SRC}"
+sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $source ${BACKUP_SRC}
+echo "sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $destination ${BACKUP_DST}"
+sudo mount -t nfs -o nfsvers=4.1 -o rsize=1048576 -o wsize=1048576 -o timeo=600 -o retrans=2 -o hard $destination ${BACKUP_DST}
 
 # we need to decrement retain because we start counting with 0 and we need to remove the oldest backup
 let "retain=$retain-1"
-if sudo test -d /mnt/backups/$efsid/$interval.$retain; then
-  echo "sudo rm -rf /mnt/backups/$efsid/$interval.$retain"
-  sudo rm -rf /mnt/backups/$efsid/$interval.$retain
+if sudo test -d ${BACKUP_DST}/$efsid/$interval.$retain; then
+  echo "sudo rm -rf ${BACKUP_DST}/$efsid/$interval.$retain"
+  sudo rm -rf ${BACKUP_DST}/$efsid/$interval.$retain
 fi
 
 
 # Rotate all previous backups (except the first one), up one level
 for x in `seq $retain -1 2`; do
-  if sudo test -d /mnt/backups/$efsid/$interval.$[$x-1]; then
-    echo "sudo mv /mnt/backups/$efsid/$interval.$[$x-1] /mnt/backups/$efsid/$interval.$x"
-    sudo mv /mnt/backups/$efsid/$interval.$[$x-1] /mnt/backups/$efsid/$interval.$x
+  if sudo test -d ${BACKUP_DST}/$efsid/$interval.$[$x-1]; then
+    echo "sudo mv ${BACKUP_DST}/$efsid/$interval.$[$x-1] ${BACKUP_DST}/$efsid/$interval.$x"
+    sudo mv ${BACKUP_DST}/$efsid/$interval.$[$x-1] ${BACKUP_DST}/$efsid/$interval.$x
   fi
 done
 
 # Copy first backup with hard links, then replace first backup with new backup
-if sudo test -d /mnt/backups/$efsid/$interval.0 ; then
+if sudo test -d ${BACKUP_DST}/$efsid/$interval.0 ; then
   echo "Copy first backup with hard links, then replace first backup with new backup"
-  echo "sudo cp -al /mnt/backups/$efsid/$interval.0 /mnt/backups/$efsid/$interval.1"
-  sudo cp -al /mnt/backups/$efsid/$interval.0 /mnt/backups/$efsid/$interval.1
+  echo "sudo cp -al ${BACKUP_DST}/$efsid/$interval.0 ${BACKUP_DST}/$efsid/$interval.1"
+  sudo cp -al ${BACKUP_DST}/$efsid/$interval.0 ${BACKUP_DST}/$efsid/$interval.1
 fi
-if [ ! -d /mnt/backups/$efsid ]; then
-  echo "sudo mkdir -p /mnt/backups/$efsid"
-  sudo mkdir -p /mnt/backups/$efsid
-  echo "sudo chmod 700 /mnt/backups/$efsid"
-  sudo chmod 700 /mnt/backups/$efsid
+if [ ! -d ${BACKUP_DST}/$efsid ]; then
+  echo "sudo mkdir -p ${BACKUP_DST}/$efsid"
+  sudo mkdir -p ${BACKUP_DST}/$efsid
+  echo "sudo chmod 700 ${BACKUP_DST}/$efsid"
+  sudo chmod 700 ${BACKUP_DST}/$efsid
 fi
-if [ ! -d /mnt/backups/efsbackup-logs ]; then
-  echo "sudo mkdir -p /mnt/backups/efsbackup-logs"
-  sudo mkdir -p /mnt/backups/efsbackup-logs
-  echo "sudo chmod 700 /mnt/backups/efsbackup-logs"
-  sudo chmod 700 /mnt/backups/efsbackup-logs
+if [ ! -d ${BACKUP_DST}/efsbackup-logs ]; then
+  echo "sudo mkdir -p ${BACKUP_DST}/efsbackup-logs"
+  sudo mkdir -p ${BACKUP_DST}/efsbackup-logs
+  echo "sudo chmod 700 ${BACKUP_DST}/efsbackup-logs"
+  sudo chmod 700 ${BACKUP_DST}/efsbackup-logs
 fi
 echo "sudo rm /tmp/efs-backup.log"
 sudo rm /tmp/efs-backup.log
-echo "sudo rsync -ah --progress --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log /backup/ /mnt/backups/$efsid/$interval.0/"
-sudo rsync -ah --progress --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log /backup/ /mnt/backups/$efsid/$interval.0/
+echo "sudo rsync -ah --progress --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log ${BACKUP_SRC}/ ${BACKUP_DST}/$efsid/$interval.0/"
+sudo rsync -ah --progress --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log ${BACKUP_SRC}/ ${BACKUP_DST}/$efsid/$interval.0/
 rsyncStatus=$?
-echo "sudo cp /tmp/efs-backup.log /mnt/backups/efsbackup-logs/$efsid-`date +%Y%m%d-%H%M`.log"
-sudo cp /tmp/efs-backup.log /mnt/backups/efsbackup-logs/$efsid-`date +%Y%m%d-%H%M`.log
-echo "sudo touch /mnt/backups/$efsid/$interval.0/"
-sudo touch /mnt/backups/$efsid/$interval.0/
-echo "sudo umount /backup"
-sudo umount /backup
-echo "sudo umount /mnt/backups"
-sudo umount /mnt/backups
+echo "sudo cp /tmp/efs-backup.log ${BACKUP_DST}/efsbackup-logs/$efsid-`date +%Y%m%d-%H%M`.log"
+sudo cp /tmp/efs-backup.log ${BACKUP_DST}/efsbackup-logs/$efsid-`date +%Y%m%d-%H%M`.log
+echo "sudo touch ${BACKUP_DST}/$efsid/$interval.0/"
+sudo touch ${BACKUP_DST}/$efsid/$interval.0/
+echo "sudo umount ${BACKUP_SRC}"
+sudo umount ${BACKUP_SRC}
+echo "sudo umount ${BACKUP_DST}"
+sudo umount ${BACKUP_DST}
 exit $rsyncStatus
