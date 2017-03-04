@@ -52,6 +52,7 @@ done
 
 # Copy first backup with hard links, then replace first backup with new backup
 if sudo test -d /mnt/backups/$efsid/$interval.0 ; then
+  echo "Copy first backup with hard links, then replace first backup with new backup"
   echo "sudo cp -al /mnt/backups/$efsid/$interval.0 /mnt/backups/$efsid/$interval.1"
   sudo cp -al /mnt/backups/$efsid/$interval.0 /mnt/backups/$efsid/$interval.1
 fi
@@ -69,11 +70,15 @@ if [ ! -d /mnt/backups/efsbackup-logs ]; then
 fi
 echo "sudo rm /tmp/efs-backup.log"
 sudo rm /tmp/efs-backup.log
-echo "sudo rsync -ah --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log /backup/ /mnt/backups/$efsid/$interval.0/"
-sudo rsync -ah --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log /backup/ /mnt/backups/$efsid/$interval.0/
+echo "sudo rsync -ah --progress --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log /backup/ /mnt/backups/$efsid/$interval.0/"
+sudo rsync -ah --progress --stats --delete --numeric-ids --log-file=/tmp/efs-backup.log /backup/ /mnt/backups/$efsid/$interval.0/
 rsyncStatus=$?
 echo "sudo cp /tmp/efs-backup.log /mnt/backups/efsbackup-logs/$efsid-`date +%Y%m%d-%H%M`.log"
 sudo cp /tmp/efs-backup.log /mnt/backups/efsbackup-logs/$efsid-`date +%Y%m%d-%H%M`.log
 echo "sudo touch /mnt/backups/$efsid/$interval.0/"
 sudo touch /mnt/backups/$efsid/$interval.0/
+echo "sudo umount /backup"
+sudo umount /backup
+echo "sudo umount /mnt/backups"
+sudo umount /mnt/backups
 exit $rsyncStatus
