@@ -27,8 +27,8 @@ efsid=$5
 #sudo yum -y install nfs-utils
 
 #we need here to separete directories for running things in parallel
-BACKUP_SRC="/backup-$source"
-BACKUP_DST="/mnt/backups-$destination"
+BACKUP_SRC="/backup-$efsid"
+BACKUP_DST="/mnt/backups-$efsid"
 
 echo "sudo mkdir ${BACKUP_SRC}"
 sudo mkdir ${BACKUP_SRC}
